@@ -25,3 +25,6 @@ cvlib aims to be an implementation of correlation vectors that you can use for r
 ### Missing features
 1. Atomic version
 2. spin operation
+3. oversize
+4. validations
+5. (probably will not implement) v1 specification
