@@ -12,10 +12,13 @@ use crate::{
     spinparams::{generate_entropy, tick_periodicity_bits, ticks_to_drop, SpinParams},
 };
 
+const TerminationSymbol: &str = "!";
+
 #[derive(Eq, PartialEq, Debug)]
 pub struct CorrelationVector {
     base: String,
     vector: Vec<u32>,
+    immutable: bool,
 }
 
 impl CorrelationVector {
@@ -35,11 +38,15 @@ impl CorrelationVector {
         CorrelationVector {
             base: base_string,
             vector: vec![0],
+            immutable: false,
         }
     }
 
     pub fn parse(input: &str) -> Result<CorrelationVector, CorrelationVectorParseError> {
-        let parts = input.split('.').collect::<Vec<&str>>();
+        let parts = input
+            .split('.')
+            .filter(|&e| e != TerminationSymbol)
+            .collect::<Vec<&str>>();
         match *parts.as_slice() {
             [base, _first, ..] => Ok(CorrelationVector {
                 base: base.to_string(),
@@ -47,6 +54,7 @@ impl CorrelationVector {
                     .iter()
                     .map(|s| s.parse::<u32>())
                     .collect::<Result<Vec<u32>, ParseIntError>>()?,
+                immutable: input.ends_with(TerminationSymbol),
             }),
             [_] => Err(CorrelationVectorParseError::MissingVector),
             [] => Err(CorrelationVectorParseError::Empty),
@@ -54,15 +62,24 @@ impl CorrelationVector {
     }
 
     pub fn extend(&mut self) {
+        if self.immutable {
+            return;
+        }
         self.vector.push(0);
     }
 
     pub fn increment(&mut self) {
+        if self.immutable {
+            return;
+        }
         let last_index = self.vector.len() - 1;
         self.vector[last_index] += 1;
     }
 
     pub fn spin(&mut self, params: SpinParams) {
+        if self.immutable {
+            return;
+        }
         let entropy = generate_entropy(params.spin_entropy);
         let ticks = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -109,7 +126,13 @@ impl Display for CorrelationVector {
             .map(|i| i.to_string())
             .collect::<Vec<String>>()
             .join(".");
-        write!(f, "{}.{}", self.base, vector_string)
+        write!(
+            f,
+            "{}.{}{}",
+            self.base,
+            vector_string,
+            if self.immutable { "!" } else { "" }
+        )
     }
 }
 
