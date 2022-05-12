@@ -8,5 +8,6 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0.57"
 base64 = "0.13.0"
+rand = "0.8.5"
 thiserror = "1.0.31"
 uuid = { version = "1.0.0", features = ["v4"] }
