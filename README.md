@@ -19,12 +19,11 @@ Then, you can generate a correlation vector by simply running
 cvgen
 ```
 ### cvlib
-cvlib aims to be an implementation of correlation vectors that you can use for rust code. Currently, it's a WIP.
+cvlib aims to be an implementation of correlation vectors that you can use for rust code. 
 
 
 ### Missing features
-1. Atomic version
-2. spin operation
-3. oversize
-4. validations
-5. (probably will not implement) v1 specification
+1. oversize
+2. immutable
+3. validations
+4. (probably will not implement) v1 specification
