@@ -1,5 +1,5 @@
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt::{Display, Formatter},
     num::ParseIntError,
     time::SystemTime,
@@ -12,13 +12,14 @@ use crate::{
     spinparams::{generate_entropy, tick_periodicity_bits, ticks_to_drop, SpinParams},
 };
 
-const TerminationSymbol: &str = "!";
+const TERMINATION_SYMBOL: &str = "!";
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct CorrelationVector {
     base: String,
     vector: Vec<u32>,
     immutable: bool,
+    serialized_length: usize,
 }
 
 impl CorrelationVector {
@@ -35,17 +36,27 @@ impl CorrelationVector {
             }
         }
         base_string.shrink_to_fit();
+        let base_str_len = base_string.len();
         CorrelationVector {
             base: base_string,
             vector: vec![0],
             immutable: false,
+            serialized_length: base_str_len + 2,
         }
     }
 
     pub fn parse(input: &str) -> Result<CorrelationVector, CorrelationVectorParseError> {
+        if input.len() > 128 || (input.len() == 128 && !input.ends_with(TERMINATION_SYMBOL)) {
+            return Err(CorrelationVectorParseError::StringTooLongError);
+        }
+
+        let mut input = input;
+        if input.ends_with(TERMINATION_SYMBOL) {
+            input = input.trim_end_matches(TERMINATION_SYMBOL);
+        }
+
         let parts = input
             .split('.')
-            .filter(|&e| e != TerminationSymbol)
             .collect::<Vec<&str>>();
         match *parts.as_slice() {
             [base, _first, ..] => Ok(CorrelationVector {
@@ -54,7 +65,8 @@ impl CorrelationVector {
                     .iter()
                     .map(|s| s.parse::<u32>())
                     .collect::<Result<Vec<u32>, ParseIntError>>()?,
-                immutable: input.ends_with(TerminationSymbol),
+                immutable: input.ends_with(TERMINATION_SYMBOL),
+                serialized_length: input.len(),
             }),
             [_] => Err(CorrelationVectorParseError::MissingVector),
             [] => Err(CorrelationVectorParseError::Empty),
@@ -65,7 +77,13 @@ impl CorrelationVector {
         if self.immutable {
             return;
         }
+        let proposed_len = self.serialized_length + 2;
+        if proposed_len > 127 {
+            self.immutable = true;
+            return;
+        }
         self.vector.push(0);
+        self.serialized_length = proposed_len; // .0
     }
 
     pub fn increment(&mut self) {
@@ -73,7 +91,20 @@ impl CorrelationVector {
             return;
         }
         let last_index = self.vector.len() - 1;
-        self.vector[last_index] += 1;
+        let prev = self.vector[last_index];
+
+        // if the last digit is 9, the serialized length will increase
+        if prev % 10 == 9 {
+            if self.serialized_length < 127 {
+                self.serialized_length += 1;
+            } else {
+                self.immutable = true;
+            }
+        }
+
+        if !self.immutable {
+            self.vector[last_index] = prev + 1;
+        }
     }
 
     pub fn spin(&mut self, params: SpinParams) {
@@ -103,13 +134,43 @@ impl CorrelationVector {
 
         value &= mask;
 
-        self.vector.push(value as u32);
+        let first_32_bits = value as u32;
+        let proposed_extension_len = serialized_length_of(first_32_bits) + 1;
+        if self.serialized_length + proposed_extension_len > 127 {
+            self.immutable = true;
+            return;
+        }
+        self.serialized_length += proposed_extension_len;
+        self.vector.push(first_32_bits);
         if tick_bitmask_bits > 32 {
-            self.vector.push((value >> 32).try_into().unwrap());
+            let end_32_bits = (value >> 32) as u32;
+            let proposed_extension_len = serialized_length_of(end_32_bits) + 1;
+            if self.serialized_length + proposed_extension_len > 127 {
+                self.immutable = true;
+                return;
+            }
+            self.vector.push(end_32_bits);
+            self.serialized_length += proposed_extension_len;
         }
 
-        self.vector.push(0)
+        if self.serialized_length + 2 > 127 {
+            self.immutable = true;
+            return;
+        }
+
+        self.vector.push(0);
+        self.serialized_length += 2;
     }
+}
+
+fn serialized_length_of(input: u32) -> usize {
+    let mut length = 1;
+    let mut input = input;
+    while input > 10 {
+        length += 1;
+        input /= 10;
+    }
+    length
 }
 
 impl Default for CorrelationVector {
@@ -138,6 +199,7 @@ impl Display for CorrelationVector {
 
 #[cfg(test)]
 mod tests {
+
     use crate::spinparams::{SpinCounterInterval, SpinCounterPeriodicity, SpinEntropy};
 
     use super::*;
@@ -184,5 +246,52 @@ mod tests {
 
         let cv_string = cv.to_string();
         assert!(cv_string.ends_with('0'));
+    }
+
+    #[test]
+    fn extend_stops_when_oversize() {
+        let mut cv = CorrelationVector::new();
+        for _ in 0..128 {
+            cv.extend();
+        }
+        let cv_string = cv.to_string();
+        assert!(cv_string.len() <= 128);
+        assert!(cv_string.ends_with(TERMINATION_SYMBOL));
+    }
+
+    #[test]
+    fn spin_stops_when_oversize() {
+        let mut cv = CorrelationVector::new();
+        for _ in 0..128 {
+            cv.spin(SpinParams {
+                spin_entropy: SpinEntropy::Two,
+                spin_counter_interval: SpinCounterInterval::Fine,
+                spin_counter_periodicity: SpinCounterPeriodicity::Short,
+            });
+        }
+        let cv_string = cv.to_string();
+        assert!(cv_string.len() <= 128, "{}", cv_string.len());
+        assert!(cv_string.ends_with(TERMINATION_SYMBOL));
+        println!("{}", cv_string);
+    }
+
+    #[test]
+    fn increment_stops_when_oversize() {
+        let mut cv = CorrelationVector::parse(
+            "P9v1ltK2S7qTS77z0lWtKg.0.386394219.0.386383989.0.386344389.0.386372594.0.386391233.0.386360320.0\
+            .386386342.0.386341105.12344459"
+        ).unwrap();
+
+        cv.increment();
+
+        let cv_string = cv.to_string();
+        assert_eq!(cv_string.len(), 128);
+        assert!(cv_string.ends_with(TERMINATION_SYMBOL));
+    }
+
+    #[test]
+    fn parse_terminated() {
+        let res = CorrelationVector::parse("base.0!");
+        assert!(res.is_ok(), "{:?}", res);
     }
 }

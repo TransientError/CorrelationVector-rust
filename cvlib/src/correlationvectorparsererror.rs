@@ -11,4 +11,6 @@ pub enum CorrelationVectorParseError {
         #[from]
         source: std::num::ParseIntError,
     },
+    #[error("String is too long to be a valid correlation vector")]
+    StringTooLongError,
 }
