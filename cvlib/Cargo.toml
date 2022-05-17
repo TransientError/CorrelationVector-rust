@@ -5,6 +5,7 @@ edition = "2018"
 license = "MIT"
 description = "A rust implementation of the Correlation Vector"
 repository = "https://github.com/TransientError/CorrelationVector-rust"
+keywords = ["tracing"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
