@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// The error type for the correlation vector parse function
+/// The error type for the correlation vector [`CorrelationVector::parse`](super::CorrelationVector::parse())
 #[derive(Debug, Error)]
 pub enum CorrelationVectorParseError {
     /// The input is empty
