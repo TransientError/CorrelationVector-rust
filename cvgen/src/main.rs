@@ -1,4 +1,4 @@
-use cvlib::correlationvector::CorrelationVector;
+use cvlib::CorrelationVector;
 
 
 fn main() {

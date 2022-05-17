@@ -14,6 +14,7 @@ use crate::{
 
 const TERMINATION_SYMBOL: &str = "!";
 
+/// The Correlation Vector struct
 #[derive(Eq, PartialEq, Debug)]
 pub struct CorrelationVector {
     base: String,
@@ -23,10 +24,12 @@ pub struct CorrelationVector {
 }
 
 impl CorrelationVector {
+    /// Creates a new CorrelationVector with a randomly generated UUID.
     pub fn new() -> CorrelationVector {
         Self::new_from_uuid(Uuid::new_v4())
     }
 
+    /// Create a new CorrelationVector from a given UUID.
     pub fn new_from_uuid(base: Uuid) -> CorrelationVector {
         let mut base_string = base64::encode(base.as_bytes());
         while let Some(c) = base_string.pop() {
@@ -45,6 +48,7 @@ impl CorrelationVector {
         }
     }
 
+    /// Create a new CorrelationVector struct from a string representation of a CorrelationVector.
     pub fn parse(input: &str) -> Result<CorrelationVector, CorrelationVectorParseError> {
         if input.len() > 128 || (input.len() == 128 && !input.ends_with(TERMINATION_SYMBOL)) {
             return Err(CorrelationVectorParseError::StringTooLongError);
@@ -73,6 +77,7 @@ impl CorrelationVector {
         }
     }
 
+    /// Append a new clock to the end of the vector clock
     pub fn extend(&mut self) {
         if self.immutable {
             return;
@@ -86,6 +91,7 @@ impl CorrelationVector {
         self.serialized_length = proposed_len; // .0
     }
 
+    /// Increment the latest clock in the vector clock
     pub fn increment(&mut self) {
         if self.immutable {
             return;
@@ -107,6 +113,8 @@ impl CorrelationVector {
         }
     }
 
+    /// Transform the vector clock in a unique, monotonically increasing way. 
+    /// This is mostly used in situations where increment can not guaranatee uniqueness
     pub fn spin(&mut self, params: SpinParams) {
         if self.immutable {
             return;
