@@ -1,8 +1,6 @@
 ## What is this?
 This is a rust implementation of https://github.com/microsoft/CorrelationVector.
 
-It's currently not complete, but it has the most basic features.
-
 I mainly wrote this in order to generate arbitrary correlation vectors for testing, which this certainly works for.
 
 The repo consists of two parts:
@@ -23,7 +21,4 @@ cvlib aims to be an implementation of correlation vectors that you can use for r
 
 
 ### Missing features
-1. oversize
-2. immutable
-3. validations
-4. (probably will not implement) v1 specification
+1. (probably will not implement) v1 specification
