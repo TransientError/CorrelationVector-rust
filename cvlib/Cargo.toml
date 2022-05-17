@@ -2,6 +2,9 @@
 name = "cvlib"
 version = "0.1.0"
 edition = "2018"
+license = "MIT"
+description = "A rust implementation of the Correlation Vector"
+repository = "https://github.com/TransientError/CorrelationVector-rust"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
