@@ -1,3 +1,4 @@
+[![https://img.shields.io/crates/v/cvlib?style=for-the-badge](https://img.shields.io/crates/v/cvlib?style=for-the-badge)](https://crates.io/crates/cvlib)
 ## CorrelationVector for Rust
 CorrelationVector-Rust provides the Rust implementation of the CorrelationVector protocol for tracing and correlation of events through a distributed system.
 
